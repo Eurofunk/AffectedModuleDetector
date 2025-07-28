@@ -26,7 +26,7 @@ import java.io.File
 import java.io.Serializable
 
 /** Creates a project graph for fast lookup by file path */
-class ProjectGraph(project: Project, logger: Logger? = null) : Serializable {
+class ProjectGraph(project: Project, logger: Logger?) : Serializable {
     private val rootNode: Node
     private val rootProjectDir: File
 
