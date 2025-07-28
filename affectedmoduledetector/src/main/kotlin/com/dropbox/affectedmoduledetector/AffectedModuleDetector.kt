@@ -33,7 +33,10 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.logging.Logger
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.services.BuildServiceSpec
@@ -175,8 +178,8 @@ abstract class AffectedModuleDetector(protected val logger: Logger?) {
                 val provider =
                     setupWithParams(rootProject) { spec ->
                         val params = spec.parameters
-                        params.acceptAll = true
-                        params.log = logger
+                        params.acceptAll.set(true)
+                        params.log.set(logger)
                     }
                 instance.wrapped = provider
                 return
@@ -218,15 +221,15 @@ abstract class AffectedModuleDetector(protected val logger: Logger?) {
             val dependencyTracker = DependencyTracker(rootProject, logger.toLogger())
             val provider = setupWithParams(rootProject) { spec ->
                 val parameters = spec.parameters
-                parameters.acceptAll = false
-                parameters.projectGraph = projectGraph
-                parameters.dependencyTracker = dependencyTracker
-                parameters.log = logger
-                parameters.ignoreUnknownProjects = true
-                parameters.projectSubset = subset
-                parameters.modules = modules
-                parameters.config = config
-                parameters.gitChangedFilesProvider = gitClient.findChangedFiles(rootProject)
+                parameters.acceptAll.set(false)
+                parameters.projectGraph.set(projectGraph)
+                parameters.dependencyTracker.set(dependencyTracker)
+                parameters.log.set(logger)
+                parameters.ignoreUnknownProjects.set(true)
+                parameters.projectSubset.set(subset)
+                parameters.modules.set(modules)
+                parameters.config.set(config)
+                parameters.gitChangedFilesProvider.set(gitClient.findChangedFiles(rootProject))
                 parameters.gitRoot.set(gitClient.getGitRoot())
             }
             logger.info("Using real detector with $subset")
@@ -401,31 +404,31 @@ class AffectedModuleDetectorWrapper : AffectedModuleDetector(logger = null) {
 abstract class AffectedModuleDetectorLoader :
     BuildService<AffectedModuleDetectorLoader.Parameters> {
     interface Parameters : BuildServiceParameters {
-        var acceptAll: Boolean
-        var projectGraph: ProjectGraph
-        var dependencyTracker: DependencyTracker
-        var log: FileLogger
-        var ignoreUnknownProjects: Boolean
-        var projectSubset: ProjectSubset
-        var modules: Set<String>?
-        var gitChangedFilesProvider: Provider<List<String>>
-        var config: AffectedModuleConfiguration
+        val acceptAll: Property<Boolean>
+        val projectGraph: Property<ProjectGraph>
+        val dependencyTracker: Property<DependencyTracker>
+        val log: Property<FileLogger>
+        val ignoreUnknownProjects: Property<Boolean>
+        val projectSubset: Property<ProjectSubset>
+        val modules: SetProperty<String>
+        val gitChangedFilesProvider: ListProperty<String>
+        val config: Property<AffectedModuleConfiguration>
         val gitRoot: DirectoryProperty
     }
 
     val detector: AffectedModuleDetector by lazy {
-        val logger = parameters.log.toLogger()
-        if (parameters.acceptAll) {
+        val logger = parameters.log.get().toLogger()
+        if (parameters.acceptAll.get()) {
             AcceptAll(logger)
         } else {
             AffectedModuleDetectorImpl(
-                projectGraph = parameters.projectGraph,
-                dependencyTracker = parameters.dependencyTracker,
+                projectGraph = parameters.projectGraph.get(),
+                dependencyTracker = parameters.dependencyTracker.get(),
                 logger = logger,
-                ignoreUnknownProjects = parameters.ignoreUnknownProjects,
-                projectSubset = parameters.projectSubset,
-                modules = parameters.modules,
-                config = parameters.config,
+                ignoreUnknownProjects = parameters.ignoreUnknownProjects.get(),
+                projectSubset = parameters.projectSubset.get(),
+                modules = parameters.modules.orNull,
+                config = parameters.config.get(),
                 changedFilesProvider = parameters.gitChangedFilesProvider,
                 gitRoot = parameters.gitRoot.get().asFile
             )
